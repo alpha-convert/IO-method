@@ -1,0 +1,147 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+%\usepackage[margin=30pt]{geometry}
+\usepackage{amsmath}
+%\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+%\usepackage{fourier}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{cmll}
+%\usepackage{minted}
+\usepackage{MnSymbol}
+\usepackage{relsize}
+\usepackage{enumerate}
+\usepackage{proof}
+\usepackage{mathpartir}
+\usepackage{stmaryrd}
+\usepackage{syntax}
+%\usemintedstyle{bw}
+
+\author{}
+  
+\newtheorem{theorem}{Theorem}[section]
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+%\newtheorem{corollary}{Corollary}[section]
+
+
+
+
+
+\newcommand{\isml}{\mintinline{sml}}
+\newcommand{\msml}[1]{\text{\isml{#1}}}
+\newcommand{\sml}{\isml}
+
+\newcommand{\tytrans}[1]{\llbracket #1 \rrbracket}
+\newcommand{\tertrans}[1]{\left\lVert#1\right\rVert}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\angles}[1]{\left\llangle #1 \right\rrangle}
+\newcommand{\eval}{\downarrow}
+\newcommand{\val}{\isml{val}}
+\newcommand{\bdby}{\sqsubseteq}
+\newcommand{\wknto}{\sqsubseteq}
+\newcommand{\valbd}{\sqsubseteq_{\isml{val}}}
+\newcommand{\subbd}{\sqsubseteq_{\isml{sub}}}
+\newcommand{\subst}[2]{\left[#1 \middle/ #2 \right]}
+
+
+\newcommand{\save}[3]{\ensuremath{\isml{save}^{#1}_{#2} \; #3}}
+\newcommand{\disc}[2]{\ensuremath{\isml{disc}_{#1} \; #2}}
+\newcommand{\wait}[2]{\ensuremath{\isml{wait}_{#1} \; #2}}
+\newcommand{\tsfer}[6]{\ensuremath{\isml{transfer}_{#1} \, !^{#2}_{#3} \, #4 = #5 \; \isml{to} \; #6}}
+\newcommand{\case}[5]{\ensuremath{\isml{case} \, (#1,\, #2. #3 \, , \, #4 . #5})}
+\newcommand{\inl}[1]{\ensuremath{\isml{inl} \, #1}}
+\newcommand{\inr}[1]{\ensuremath{\isml{inr} \, #1}}
+\newcommand{\elist}{\ensuremath{\isml{[]}}}
+\newcommand{\cons}[2]{\ensuremath{#1 \, :: \, #2}}
+\newcommand{\listty}[1]{\ensuremath{\isml{[}#1\isml{]}}}
+\newcommand{\delay}[1]{\ensuremath{\isml{delay} \, #1}}
+\newcommand{\susp}[1]{\ensuremath{\isml{susp} \, #1}}
+\newcommand{\force}[1]{\ensuremath{\isml{force} \, #1}}
+\newcommand{\psplit}[4]{\ensuremath{\isml{split}(#1, \, #2.#3.#4)}}
+\newcommand{\unit}{\ensuremath{\isml{()}}}
+\newcommand{\N}{\ensuremath{\mathbb{N}}}
+\newcommand{\nrec}[3]{\ensuremath{\isml{nrec}\left(#1,#2,#3\right)}}
+\newcommand{\lrec}[3]{\ensuremath{\isml{lrec}\left(#1,#2,#3\right)}}
+\newcommand{\inj}{\overline}
+\newcommand{\tick}[1]{\ensuremath{\isml{tick} \; \, ; \; #1}}
+\newcommand{\amp}{\ensuremath{\&}}
+\newcommand{\amppair}[2]{\ensuremath{\langle #1,#2 \rangle}}
+\newcommand{\scott}[1]{\ensuremath{\llbracket #1 \rrbracket}}
+\newcommand{\snrec}{\ensuremath{\texttt{snrec}}}
+\newcommand{\slrec}{\ensuremath{\texttt{slrec}}}
+\newcommand{\scase}{\ensuremath{\texttt{scase}}}
+\newcommand{\ret}[1]{\ensuremath{\texttt{ret} \, #1}}
+\newcommand{\attach}[1]{\ensuremath{\texttt{attach} \, #1}}
+
+
+\DeclareMathOperator{\wb}{WB}
+\DeclareMathOperator{\wbc}{WBc}
+\DeclareMathOperator{\Hom}{Hom}
+
+\newcommand{\loli}{\multimap}
+\newcommand{\tensor}{\otimes}
+\newcommand{\proves}{\vdash}
+\newcommand{\ang}{^{\circ}}
+
+\newcommand{\curry}[1]{\ensuremath{\text{curry}\left(#1\right)}}
+\newcommand{\const}[1]{\ensuremath{\text{const} \left(#1\right)}}
+
+\newcommand{\ds}{\ensuremath{\$}}
+
+\newcommand{\gens}{\Rightarrow}
+\newcommand{\infers}{\uparrow}
+\newcommand{\checks}{\downarrow}
+\newcommand{\M}{\mathbb{M}}
+\newcommand{\subty}{<:}
+\newcommand{\subtynf}{<:_{\texttt{nf}}}
+
+\newcommand{\fv}{\texttt{fv}}
+\newcommand{\bv}{\texttt{bv}}
+
+\title{Implementing Substructural Type Systems with the I/O Method}
+
+
+\begin{document}
+
+\iffalse
+- Intro about substructural type systems
+ - What are substructural type systems
+ - Why do they force the context splitting?
+ - Why is it hard to implement them?
+   - (offload real impl to bidir summary paper)
+- I/O Method
+  - Declarative rules
+  - I/O rules
+- Unique determination
+- Soundness
+- Completeness
+\fi
+
+
+Substructural type systems are a tool for controlling the flow of resources and data around programs. At the most basic level, a substructural type system restricts the allowed use of variables in some way, in order to statically enforce some desired safety property. Some common examples of substructural type systems include \textit{linear} type systems, where every variable must be used exactly once, and \textit{affine} type systems where every variable must be used at least once. Affine and linear type systems both statically prevent a wide range of errors such as use-after-free bugs. Other (less common) examples include relevant and ordered type systems.
+
+Substructural type systems work by making different so-called ``structural rules" of a type system inadmissable. For instance, linear logic disallows the use of the weakening and contraction rules-- since contraction allows for a variable in the context to be duplicated and weakening allows for a variable to be forgotten about, a program written in a type system which includes neither must use every variable exactly once.
+
+The inadmissibility of these structural rules which describe the way the context must be manipulated is the heart of the added complexity in implementing substructural type systems. As a concrete example to illustrate this (which we will continue with for the remainder of this note), consider the following instance of the simply-typed lambda calculus with affine types.
+
+\begin{mathpar}
+
+\infer{\Gamma \vdash x : A}{x : A \in \Gamma}
+
+\infer{\Gamma \vdash () : 1}{ }\\
+
+\infer{\Gamma \vdash \lambda x : A. e : A \loli B}{\Gamma, x : A \vdash e : B}
+
+\infer{\Gamma_1,\Gamma_2 \vdash e_1 \; e_2 : B}{\Gamma_1 \vdash e_1 : A \loli B \\ \Gamma_2 \vdash e_2 : A}
+
+\end{mathpar}
+
+The most interesting rule here is the application rule: note that the context is ``split" as two contexts $\Gamma_1,\Gamma_2$, and these two  contexts go towards typing different premises. This change over the standard rule (where the conclusion happens in context $\Gamma$, as do both premises) ensures that a contraction rule is inadmissible. 
+
+Suppose we wanted to implement a type inference function for this language by writing a function \texttt{infer : ctx -> tm -> ty}. Most of the cases go through smoothly: the variable case is a lookup in the context, the lambda case adds a binding for $x : A$ in the context, and then recursively infers the type of $e$. But for function application, a naive solution gets stuck-- it's impossible to know how to split some input context to pass arguments to the two recursive calls. This is the crux of the problem.
+\end{document}
