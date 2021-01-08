@@ -105,7 +105,7 @@
 \newcommand{\fv}{\texttt{fv}}
 \newcommand{\bv}{\texttt{bv}}
 
-\title{A Note on Implementing Substructural Type Systems with the I/O Method}
+\title{Algorithmic Substructural Type Systems}
 \author{Joseph W. Cutler}
 
 \date{ }
@@ -118,13 +118,14 @@
 
 
 \section{Substructural Type Systems}
+Substructural type systems are a tool for controlling the flow of resources and data around programs. At the most basic level, a substructural type system restricts the allowed use of variables in some way, in order to statically enforce some desired safety property. Some common examples of substructural type systems include \textit{linear} type systems, where every variable must be used exactly once, and \textit{affine} type systems where every variable must be used at least once. Affine and linear type systems both statically prevent a wide range of errors such as use-after-free bugs. Other (less common) examples include relevant and ordered type systems. 
 
-Substructural type systems are a tool for controlling the flow of resources and data around programs. At the most basic level, a substructural type system restricts the allowed use of variables in some way, in order to statically enforce some desired safety property. Some common examples of substructural type systems include \textit{linear} type systems, where every variable must be used exactly once, and \textit{affine} type systems where every variable must be used at least once. Affine and linear type systems both statically prevent a wide range of errors such as use-after-free bugs. Other (less common) examples include relevant and ordered type systems. It's worth noting that substructural type systems are in contrast with \textit{fully structural} type systems, where there are no restrictions on variable usage.
+In this note, we will develop and study \textit{algorithmic} calculi for all four of these kinds of type systems. Algorithmic presentations of type systems are in contrast to declarative presentations of type systems, which are the standard way type systems are presented. A declarative type system is an inductively-defined relation which contains all of the well-typed terms of the system-- it simply declares which terms are well typed. Declarative type systems may not be syntax directed, easily implementable, or even have decidable membership. Meanwhile, an algorithmic type system is a type system which also describes its own implementation strategy. In general, it is not at all trivial to create an algorithmic type system which corresponds to a declarative one. However, the four major substructural logics all admit fairly straightforward algorithmic presentations.
 
-Substructural type systems work by making different so-called ``structural rules" of a type system inadmissable. For instance, linear logic disallows the use of the weakening and contraction rules-- since contraction allows for a variable in the context to be duplicated and weakening allows for a variable to be forgotten about, a program written in a type system which includes neither must use every variable exactly once. 
+Before we begin, it's worth discussing what about substructural type systems makes them difficult to implement from their standard declarative forms. This is worth consideration, especially in light of the fact that many declarative type systems are also algorithmic! Substructural type systems work by making different so-called ``structural rules" of a type system inadmissable. For instance, linear logic disallows the use of the weakening and contraction rules-- since contraction allows for a variable in the context to be duplicated and weakening allows for a variable to be forgotten about, a program written in a type system which includes neither must use every variable exactly once. The inadmissibility of these structural rules which describe the way the context must be manipulated is the heart of the added complexity in implementing substructural type systems. As with most things, this is best illustrated with an example.
 
-The inadmissibility of these structural rules which describe the way the context must be manipulated is the heart of the added complexity in implementing substructural type systems. As a concrete example to illustrate this (which we will continue with for the remainder of this note), consider the following instance of the simply-typed lambda calculus with affine types, shown in Figure~\ref{fig:aff-decl}.
-
+\section{Affine Types}
+We will begin by considering an affine type system (weakening, no contraction). The standard declarative calculus is shown in Figure~\ref{fig:aff-decl}.
 \begin{figure}
 \begin{mathpar}
 
@@ -140,15 +141,9 @@ The inadmissibility of these structural rules which describe the way the context
 \caption{Declarative Affine Type System}
 \label{fig:aff-decl}
 \end{figure}
+The most important rule here is the application rule: note that the context is ``split" as two contexts $\Gamma_1,\Gamma_2$, and these two  contexts go towards typing different premises. This change over the standard rule (where the conclusion happens in context $\Gamma$, as do both premises) ensures that a contraction rule is inadmissible. As was mentioned previously, this leads to the difficulty with implementation. Suppose we wanted to implement a type inference function for this language by writing a function \texttt{infer : ctx -> tm -> ty}, which recurs on the term argument of type \texttt{tm}. Most of the cases go through smoothly: the variable case is a lookup in the context, the lambda case adds a binding for $x : A$ in the context, and then recursively infers the type of $e$. But for function application, a naive solution gets stuck-- it's impossible to know how to split some input context to pass arguments to the two recursive calls.
 
-
-The most interesting rule here is the application rule: note that the context is ``split" as two contexts $\Gamma_1,\Gamma_2$, and these two  contexts go towards typing different premises. This change over the standard rule (where the conclusion happens in context $\Gamma$, as do both premises) ensures that a contraction rule is inadmissible.
-
-Suppose we wanted to implement a type inference function for this language by writing a function \texttt{infer : ctx -> tm -> ty}. Most of the cases go through smoothly: the variable case is a lookup in the context, the lambda case adds a binding for $x : A$ in the context, and then recursively infers the type of $e$. But for function application, a naive solution gets stuck-- it's impossible to know how to split some input context to pass arguments to the two recursive calls. This is the crux of the problem. Indeed, this calculus is presented in ``declarative" style- it tells us which terms have which types, but provides no straightforward way to implement type checking or inference.
-
-\section{Algorithmic Substructural Type Systems}
-
-The solution is what's known as the I/O method. We extend the typing judgment to be of the form $\Gamma \vdash e : A \gens \Gamma'$, where $\Gamma'$ is meant to be thought of as an ``outupt" of the judgment. Intuitively, $\Gamma'$ will contain the variables from $\Gamma$ which are not needed for typing $e$. The output context $\Gamma'$ can then be used to type further terms. We can then re-write the type system with this new judgment in mind-- the key idea is to ``thread" the output context through the premises of the rule: the output of one judgment becomes the ``input" of the next. This new system is shown in Figure~\ref{fig:aff-alg}.
+In order to implement type inference (or even type checking) for this type system, we must algorithmize it! The solution for all four type systems we consider is based in the same idea: track the usage of variables in a more systematic way. For the algorithmic affine calculus, we extend the typing judgment to be of the form $\Gamma \vdash e : A \gens \Gamma'$, where $\Gamma'$ is meant to be thought of as an ``outupt" of the judgment. Intuitively, $\Gamma'$ will contain the variables from $\Gamma$ which are not needed for typing $e$. The output context $\Gamma'$ can then be used to type further terms. The key idea is to ``thread" the output context through the premises of the rule: the output of one judgment becomes the ``input" of the next. This new system is shown in Figure~\ref{fig:aff-alg}.
 
 \begin{figure}
 \begin{mathpar}
@@ -165,19 +160,12 @@ The solution is what's known as the I/O method. We extend the typing judgment to
 \label{fig:aff-alg}
 \end{figure}
 
+This threading pattern is exemplified by the function application rule, where in order to type $e_1 \; e_2$ in context $\Gamma$, we type $e_1$ in context $\Gamma$, receive an output context $\Gamma_1$, and then type $e_2$ in that context. The output judgment for that second premise then becomes the output judgment of the conclusion. Intuitively, this has the same effect as the prior system: $e_2$ is only allowed to use variables that $e_2$ does not, and $e_1$ must not use variables that are intended for use in $e_2$. That second observation (that $e_1$ in the app rule must not use variables intended for $e_2$) is operationalized by the variable rule. When typing a variable $x$ in context $\Gamma$, the output context is $\Gamma \setminus \{x : A\}$. As a consequence, subsequent judgments which use this context as input cannot use $x$. The lambda rule presents an interesting twist which is only apparent under careful consideration (or perhaps a buggy implementation). The premise of the rule types the body of the lambda in the context $\Gamma,x : A$. If the body of the rule does not mention $x$, then $x$ will be included in the output context of the premise. If we do not explicitly remove $x$ from the output context, it could be passed to another judgment. This is unacceptable, since $x$ is only scoped to the body of the lambda, and not explicitly removing it could lead to $x$ escaping its scope.
 
-This threading pattern is exemplified by (again) the function application rule, where in order to type $e_1 \; e_2$ in context $\Gamma$, we type $e_1$ in context $\Gamma$, receive an output context $\Gamma_1$, and then type $e_2$ in that context. The output judgment for that second premise then becomes the output judgment of the conclusion. Intuitively, this has the same effect as the prior system: $e_2$ is only allowed to use variables that $e_2$ does not, and $e_1$ must not use variables that are intended for use in $e_2$.
+As desired, this version of the rules is amenable to implementation. In fact, we may implement type inference for this calculus as a function \texttt{infer : tm -> ty infer}, where \texttt{'a infer = ctx -> 'a * ctx} is the state monad which handles the context-passing. This is one simple way to think about the I/O method- while type inference for fully structural languages happens in the reader monad, type inference for a substructural language must happen in the state monad.
 
-That second observation (that $e_1$ in the app rule must not use variables intended for $e_2$) is operationalized by the variable rule. When typing a variable $x$ in context $\Gamma$, the output context is $\Gamma \setminus \{x : A\}$. As a consequence, subsequent judgments which use this context as input cannot use $x$.
+While it may be intuitively clear that these two type systems type the same terms in the same way, a formal connection is not immediately obvious. For this, we need a soundness and completeness proof. In this context (which is somewhat backwards from the usual way one thinks about soundness and completeness), the algorithmic type system plays the role of the logic, and the declarative type system plays the role of the ``ground truth" semantics. Soundness here means that everything typable by the algorithmic type system is in fact typed in the same way by the declarative system, and completeness will mean that everything typable in the (nondeterministic!) declarative system can be typed by the algorithmic version. The correct statement of soundness is not too hard to discover. A first cut might be the following:
 
-The lambda rule presents an interesting twist which is only apparent under careful consideration (or perhaps a buggy implementation). The premise of the rule types the body of the lambda in the context $\Gamma,x : A$. If the body of the rule does not mention $x$, then $x$ will be included in the output context of the premise. If we do not explicitly remove $x$ from the output context, it could be passed to another judgment. This is unacceptable, since $x$ is only scoped to the body of the lambda, and not explicitly removing it could lead to $x$ escaping its scope.
-
-As desired, this version of the rules is amenable to implementation. In fact, we may implement type inference for this calculus as a function \texttt{infer : tm -> ty infer}, where \texttt{'a infer = ctx -> 'a * ctx} is the state monad which handles the context-passing. This is one simple way to think about the I/O method- while type inference for fully structural languages happens in the reader monad, type inference for a substructural language must happen in the state monad. This new calculus is an \textit{algorithmization} of the previous declarative one: we have removed the nondeterminism in order to make implementation possible.
-
-\section{Metatheory of Algorithmic Affine Types}
-While it may be intuitively clear that these two type systems type the same terms in the same way, a formal connection is not immediately obvious. For this, we need a soundness and completeness proof. In this context (which is somewhat backwards from the usual way one thinks about soundness and completeness), the algorithmic type system plays the role of the logic, and the declarative type system plays the role of the ``ground truth" semantics. Soundness here means that everything typable by the algorithmic type system is in fact typed in the same way by the declarative system, and completeness will mean that everything typable in the (nondeterministic!) declarative system can be typed by the algorithmic version.
-
-The correct statement of soundness is not too hard to discover. A first cut might be the following:
 \begin{theorem}[Attempt at Affine Soundness]
 If $\Gamma \vdash_a e : A \gens \Gamma'$, then $\Gamma \vdash_a e : A$
 \end{theorem}
@@ -211,10 +199,10 @@ This leads us to the following theorem:
 Suppose $\Gamma \vdash_a e : A \gens \Gamma''$. Then, for all $\Gamma'$, we have $\Gamma,\Gamma' \vdash_a e : A \gens \Gamma'', \Gamma'$
 \end{theorem}
 
-Weakening is not only admissible, but all of the variables added to the context must be unused, and this is reflected by the inclusion of the added varialbes in the output context. With this new weakening theorem in hand, the proof of completeness goes through easily, liberally applying weakening.
+Weakening is not only admissible, but all of the variables added to the context must be unused, and this is reflected by the inclusion of the added varialbes in the output context. With this new weakening theorem in hand, the proof of completeness goes through easily, liberally applying  algorithmic weakening.
 
 \section{Linear Types}
-To prove that the IO method is widely applicable, we will develop the same story for a linear type system. As mentioned previously, linear types can be thought of as a further restriction on top of affine types, where not only can variables not be used more than once, every varialbe must be used. To enforce this, the type system his structured such that weakening is inadmissible. This is achieved by requiring that when a variable is used, the context is empty except for that variable. The rest of the rules are identical to the affine type system, and are shown in Figure~\ref{fig:lin-decl}
+As mentioned previously, linear types can be thought of as a further restriction on top of affine types, where not only can variables not be used more than once, every variable must be used. To enforce this, the type system his structured such that weakening is inadmissible. This is achieved by requiring that when a variable is used, the context is empty except for that variable. The rest of the rules are identical to the affine type system, and are shown in Figure~\ref{fig:lin-decl}
 
 \begin{figure}
 \begin{mathpar}
@@ -264,7 +252,6 @@ It's worth remarking that this strengthening theorem was also provable for the a
 
 Just like the proof of completeness for the affine type system, the linear one requires the same weakening property. From it, completeness follows by yet another straightforward induction.
 
-
 \begin{theorem}[Algorithmic Weakening for Linear Types]
 Suppose $\Gamma \vdash_l e : A \gens \Gamma''$. Then, for all $\Gamma'$, we have $\Gamma,\Gamma' \vdash_l e : A \gens \Gamma'', \Gamma'$
 \end{theorem}
@@ -272,4 +259,93 @@ Suppose $\Gamma \vdash_l e : A \gens \Gamma''$. Then, for all $\Gamma'$, we have
 \begin{theorem}[Linear Completeness]
 If $\Gamma \vdash_l e : A$, then $\Gamma \vdash_l e : A \gens \emptyset$
 \end{theorem}
+
+\section{Relevance Types}
+We will next consider Relevance Types, the type system corresponding to relevance (sometimes known as strict) logic. Anecdotally, relevance types are much less common than either of the two previously-mentioned systems. Indeed, the computational behavior it induces is fairly unusual: a relevant type system requires that every variable be used at least once. This is enforced by inadmissible weakening, and an explicit contraction rule. The rules for this type system are presented in Figure~\ref{fig:rel-decl}.
+\begin{figure}
+\begin{mathpar}
+
+\infer{x : A \vdash_r x : A}{ }
+
+\infer{\Gamma \vdash_r \lambda x : A. e : A \loli B}{\Gamma, x : A \vdash_r e : B}
+
+\infer{\Gamma_1,\Gamma_2 \vdash_r e_1 \; e_2 : B}{\Gamma_1 \vdash_r e_1 : A \loli B \\ \Gamma_2 \vdash_r e_2 : A}
+
+\infer{\Gamma, x : A \vdash_r e : A}{\Gamma, x : A, x : A \vdash_r e : A}
+
+\infer{\emptyset \vdash_r () : 1}{ }
+
+\end{mathpar}
+\label{fig:rel-decl}
+\caption{Relevant Declarative Type System}
+\end{figure}
+
+After a moment's thought on how to create an algorithmic type system for relevance types, one likely comes to the conclusion that the technique that we've used for affine and linear types will need some modification. Instead of tracking the variables from the input context which are unused in typing the term, we will track the variables which \textit{do} get used. Then, at the top level, we will ensure that the entire context was used. This represents a fairly significant shift in perspective, and the reader will be forgiven for needing to read the rules presented in Figure~\ref{fig:rel-alg} more than a few times to context switch.
+
+\begin{figure}
+\begin{mathpar}
+
+\infer{\Gamma \vdash_r x : A \gens \{x : A\}}{x : A \in \Gamma}
+
+\infer{\Gamma \vdash_r \lambda x : A. e : A \loli B \gens \Gamma' \\ x : A \in \Gamma'}{\Gamma, x : A \vdash_r e : B \gens \Gamma' \setminus \{x : A\}}
+
+\infer{\Gamma \vdash_r e_1 \; e_2 : B \gens \Gamma_1,\Gamma_2}{\Gamma \vdash_r e_1 : A \loli B \gens \Gamma_1 \\ \Gamma \vdash_r e_2 : A \gens \Gamma_2}
+
+\infer{\Gamma \vdash_r () : 1 \gens \emptyset}{ }
+
+\end{mathpar}
+\label{fig:rel-alg}
+\caption{Relevant Algorithmic Type System}
+\end{figure}
+
+For the most part, these rules are fairly straightforward, but they do warrant some further explanation. The second premise of the lambda rule fills the same role as its partner from the linear type system-- we ensure that the argument was in fact used by checking that it appears in the set of used variables. Note that since the argument was used, pulling it off the output context of the conclusion does not represent a weakening. The most striking change is the application rule. Because the declarative type system includes contraction, we allow the entire input context to be passed to both premises. The output of the conclusion is the union of the outputs of the two premises-- the variables used by the application are the variables used by the terms in both positions.
+
+\begin{theorem}[Relevant Soundness]
+If $\Gamma \vdash_r e :A \gens \Gamma'$ then $\Gamma' \vdash_r e : A$
+\end{theorem}
+
+\begin{theorem}[Relevant Completeness]
+If $\Gamma \vdash_r e : A$ then $\Gamma \vdash_r e : A \gens \Gamma$
+\end{theorem}
+
+\section{Ordered Types}
+%https://www.cs.cmu.edu/~fp/papers/mfps99.pdf
+
+\begin{figure}
+\begin{mathpar}
+
+\infer{x : A \vdash_o x : A}{ }
+
+\infer{\Gamma \vdash_o \lambda_r x : A. e : A \twoheadrightarrow B}{\Gamma, x : A \vdash_p e : B}
+
+\infer{\Gamma \vdash_o \lambda_l x : A. e : A \hookrightarrow B}{x : A, \Gamma \vdash_o e : B}
+
+\infer{\Gamma_1,\Gamma_2 \vdash_o e_1 \; e_2 : B}{\Gamma_1 \vdash_o e_1 : A \loli B \\ \Gamma_2 \vdash_o e_2 : A}
+
+\infer{\emptyset \vdash_o () : 1}{ }
+
+\end{mathpar}
+\label{fig:ord-decl}
+\caption{Ordered Declarative Type System}
+\end{figure}
+
+
+\begin{figure}
+\begin{mathpar}
+
+\infer{\Gamma,x : A \vdash_o x : A \gens \Gamma}{ }
+
+\infer{\Gamma \vdash_o \lambda_r x : A. e : A \twoheadrightarrow B \gens \Gamma'}{\Gamma, x : A \vdash_p e : B \gens \Gamma'  \\ x : A \texttt{ not at the head}}
+
+\infer{\Gamma \vdash_o \lambda_l x : A. e : A \hookrightarrow B}{x : A, \Gamma \vdash_o e : B}
+
+\infer{\Gamma_1,\Gamma_2 \vdash_o e_1 \; e_2 : B}{\Gamma_1 \vdash_o e_1 : A \loli B \\ \Gamma_2 \vdash_o e_2 : A}
+
+\infer{\emptyset \vdash_o () : 1}{ }
+
+\end{mathpar}
+\label{fig:ord-alg}
+\caption{Ordered Algorithmic Type System}
+\end{figure}
+
 \end{document}
